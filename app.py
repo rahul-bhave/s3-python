@@ -4,8 +4,8 @@ from s3_demo import upload_file
 from s3_demo import list_files
 from s3_demo import download_file
 
-app = Flask(__name__,template_folder='../templates')
-UPLOAD_FOLDER = "uploads"
+app = Flask(__name__)
+UPLOAD_FOLDER = "upload"
 BUCKET = "rahulb-test-bucket"
 
 
@@ -28,7 +28,6 @@ def upload():
         upload_file(f"{f.filename}", BUCKET)
 
         return redirect("/storage")
-
 
 @app.route("/download/<filename>", methods=['GET'])
 def download(filename):
