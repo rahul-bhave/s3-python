@@ -1,7 +1,10 @@
 """
-This file will contain following 3 methods:
-1. Read the json file from the S3 bucket and convert the json in the dict object.
-3. Compare the json.dict with predefined.dict using deepdiff.
+This file will contain following  methods:
+1. Get Response s3 client object.
+2. Convert response into dict object.
+3. Get Response dict object.
+4. Get expected dict from json stored as expected json.
+5. Compare Response dict and expected dict using deepdiff.
 """
 import boto3
 import collections
@@ -12,6 +15,7 @@ import os,sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import conf.aws_configuration_conf as aws_conf
 from pythonjsonlogger import jsonlogger
+from pprint import pprint
 
 # logging
 log_handler = logging.StreamHandler()
@@ -26,54 +30,60 @@ os.environ['AWS_DEFAULT_REGION'] = aws_conf.AWS_DEFAULT_REGION
 os.environ['AWS_ACCESS_KEY_ID'] = aws_conf.AWS_ACCESS_KEY_ID
 os.environ['AWS_SECRET_ACCESS_KEY'] = aws_conf.AWS_SECRET_ACCESS_KEY
 
-#Declaring expecte json format
-expected_dict = json.loads("""[{
-   "MessageAttributes":{
-      "quantity":{
-         "Type":"Number",
-         "Value":"100"
-      }
-   }
-}]""")
 
 class s3utilities():
     # class to write s3 utilities
     logger = logging.getLogger(__name__)
     s3_bucket = "compare-json"
     key = 'sample.json'
+    template_directory = 'samples'
 
     def __init__(self):
         # initialising the class
         self.logger.info(f's3 utilities activated')
 
-    def get_s3_bucket_json_dict(self):
-        # Method to which will read the json file from the s3 bucket
-        # Convert the json file to dictionary
+    def get_response(self, bucket, key):
+        # Get Response s3 client object
         s3_client = boto3.client('s3')
-        response = s3_client.get_object(Bucket=self.s3_bucket, Key=self.key)
-        print(f'printing{response}')
-        sample_json = ""
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+
+        return response
+
+    def convert_dict_from_response(self,response):
+        # Convert response into dict object
+        response_json = ""
         for line in response["Body"].iter_lines():
-            sample_json += line.decode("utf-8")
-        sample_dict = json.loads(sample_json)
-        print(f'printing sample dict {sample_dict}')
+            response_json += line.decode("utf-8")
+        response_dict = json.loads(response_json)
 
-        return sample_dict
+        return response_dict
 
+    def get_response_dict(self):
+        # Get Response dict object
+        response = self.get_response(self.s3_bucket,self.key)
+        response_dict = self.convert_dict_from_response(response)
 
-    def compare_with_expected_dict(self, expected_dict):
-        # Method to compare expected dict and actual dict
-        sample_dict = self.get_s3_bucket_json_dict()
-        diff = deepdiff.DeepDiff(expected_dict, sample_dict)
+        return response_dict
+
+    def get_expected_dict(self):
+        # Get expected dict from json stored as expected json
+        current_directory = os.path.dirname(os.path.realpath(__file__))
+        message_template = os.path.join(current_directory,self.template_directory,'expected_message.json')
+        with open(message_template,'r') as fp:
+            expected_dict = json.loads(fp.read())
+
+        return expected_dict
+
+    def compare_dict(self):
+        # Compare Response dict and expected dict using deepdiff
+        response_dict = self.get_response_dict()
+        expected_dict = self.get_expected_dict()
+        diff = deepdiff.DeepDiff(expected_dict, response_dict, verbose_level=0)
 
         return diff
 
-
 if __name__ == "__main__":
     # Testing s3utilities
-
-    print(f'Testing s3utilities class')
     s3utilities = s3utilities()
-    print(f'sample_dict')
-    diff = s3utilities.compare_with_expected_dict(expected_dict)
-    print(f'actual diff is {diff}')
+    diff = s3utilities.compare_dict()
+    pprint(f'Actual diff is {diff}')
