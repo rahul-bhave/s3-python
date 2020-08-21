@@ -1,8 +1,18 @@
 {
-   "MessageAttributes":{
-      "quantity":{
-         "Type":"Number",
-         "Value":"100"
-      }
+   "PROFESSIONAL PLAYER":true,
+   "NAME":"ABCDEF",
+   "MATCHES PLAYED":500,
+   "MATCHES WON":400,
+   "MATCHES LOST":100,
+   "STATUS":"ACTIVE",
+   "COUNTRY":"IND",
+   "TURNED PRO":"9999-12-31",
+   "PRICE MONEY":{
+      "AMOUNT":1000000,
+      "CURRENCY":"USD"
+   },
+   "ENDORSEMENT FEE":{
+      "AMOUNT":500000,
+      "CURRENCY":"USD"
    }
 }

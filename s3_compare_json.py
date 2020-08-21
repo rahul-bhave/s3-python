@@ -11,7 +11,9 @@ import collections
 import deepdiff
 import json
 import logging
-import os,sys
+import os
+import re
+import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import conf.aws_configuration_conf as aws_conf
 from pythonjsonlogger import jsonlogger
@@ -30,22 +32,29 @@ os.environ['AWS_DEFAULT_REGION'] = aws_conf.AWS_DEFAULT_REGION
 os.environ['AWS_ACCESS_KEY_ID'] = aws_conf.AWS_ACCESS_KEY_ID
 os.environ['AWS_SECRET_ACCESS_KEY'] = aws_conf.AWS_SECRET_ACCESS_KEY
 
+# Defining method to compare dict
+def compare_dict(response_dict, expected_dict):
+        exclude_paths = re.compile(r"\'TURNED PRO\'|\'NAME\'")
+        diff = deepdiff.DeepDiff(expected_dict, response_dict,\
+             exclude_regex_paths=[exclude_paths],verbose_level=0)
 
+        return diff
+
+# class to write s3 utilities
 class s3utilities():
-    # class to write s3 utilities
     logger = logging.getLogger(__name__)
-    s3_bucket = "compare-json"
-    key = 'sample.json'
-    template_directory = 'samples'
 
-    def __init__(self):
+    def __init__(self, s3_bucket, key, template_directory):
         # initialising the class
         self.logger.info(f's3 utilities activated')
+        self.s3_bucket = s3_bucket
+        self.key = key
+        self.template_directory = template_directory
+        self.s3_client = boto3.client('s3')
 
     def get_response(self, bucket, key):
         # Get Response s3 client object
-        s3_client = boto3.client('s3')
-        response = s3_client.get_object(Bucket=bucket, Key=key)
+        response = self.s3_client.get_object(Bucket=bucket, Key=key)
 
         return response
 
@@ -68,22 +77,21 @@ class s3utilities():
     def get_expected_dict(self):
         # Get expected dict from json stored as expected json
         current_directory = os.path.dirname(os.path.realpath(__file__))
-        message_template = os.path.join(current_directory,self.template_directory,'expected_message.json')
+        message_template = os.path.join(current_directory,\
+            self.template_directory,'expected_message.json')
         with open(message_template,'r') as fp:
             expected_dict = json.loads(fp.read())
 
         return expected_dict
 
-    def compare_dict(self):
-        # Compare Response dict and expected dict using deepdiff
-        response_dict = self.get_response_dict()
-        expected_dict = self.get_expected_dict()
-        diff = deepdiff.DeepDiff(expected_dict, response_dict, verbose_level=0)
-
-        return diff
-
 if __name__ == "__main__":
     # Testing s3utilities
-    s3utilities = s3utilities()
-    diff = s3utilities.compare_dict()
+    s3_bucket = "compare-json"
+    key = 'sample.json'
+    template_directory = 'samples'
+    s3utilities = s3utilities(s3_bucket, key, template_directory)
+    response_dict = s3utilities.get_response_dict()
+    expected_dict = s3utilities.get_expected_dict()
+    diff = compare_dict(response_dict, expected_dict)
+    print("---------------------------------------------------------")
     pprint(f'Actual diff is {diff}')
